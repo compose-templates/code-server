@@ -1,0 +1,46 @@
+# Code Server IDE
+services:
+  code-server-ide:
+    container_name: code-server-ide
+    # https
+    #entrypoint: ["code-server", "--cert", "/workspace/certs/${TLS_CERT}", "--cert-key", "/workspace/certs/${TLS_CERT_KEY}", "--auth", "none", "--host", "0.0.0.0", "--port", "${CODER_HTTP_PORT}", "/workspace"]
+    # http
+    entrypoint: ["code-server", "--auth", "none", "--host", "0.0.0.0", "--port", "${CODER_HTTP_PORT}", "/workspace"]
+    environment: &env
+      - CODER_HTTP_PORT=${CODER_HTTP_PORT}
+      - XDG_DATA_HOME=/workspace/.config
+      # used by the https mode
+      - LOCAL_DOMAIN=${LOCAL_DOMAIN}
+      - TLS_CERT=${TLS_CERT}
+      - TLS_CERT_KEY=${TLS_CERT_KEY}
+    build: &build        
+      args:
+        - GO_ARCH=${GO_ARCH}
+        - GO_VERSION=${GO_VERSION}
+        - NODE_DISTRO=${NODE_DISTRO}
+        - NODE_VERSION=${NODE_VERSION} 
+        - CODER_VERSION=${CODER_VERSION}
+        - CODER_ARCH=${CODER_ARCH}
+        - USER_NAME=bob
+      context: ./.docker
+      dockerfile: Dockerfile
+    platform: linux/${LINUX_ARCH}
+    volumes: &volumes
+      - .:/workspace
+      - ~/.gitconfig:/etc/gitconfig
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+    ports:
+      - ${CODER_HTTP_PORT}:${CODER_HTTP_PORT} # Code Server HTTP port
+
+  code-server-ide-tasks:
+    depends_on:
+      - code-server-ide
+    container_name: code-server-ide-tasks
+    entrypoint: ["/workspace/.tasks/init.sh"]
+    environment: *env
+    build: *build       
+    platform: linux/${LINUX_ARCH}
+    volumes: *volumes
+
